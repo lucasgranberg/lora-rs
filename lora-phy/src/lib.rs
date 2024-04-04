@@ -230,7 +230,7 @@ where
     ) -> Result<(), RadioError> {
         defmt::trace!("RX mode: {}", listen_mode);
         self.prepare_modem(mdltn_params).await?;
-
+        self.rx_continuous = listen_mode == RxMode::Continuous;
         self.radio_kind.set_modulation_params(mdltn_params).await?;
         self.radio_kind.set_packet_params(rx_pkt_params).await?;
         self.radio_kind.set_channel(mdltn_params.frequency_in_hz).await?;
