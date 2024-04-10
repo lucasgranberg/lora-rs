@@ -3,12 +3,20 @@ mod radio_kind_params;
 use defmt::debug;
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::spi::*;
+pub use radio_kind_params::Sx126xVariant;
 pub use radio_kind_params::TcxoCtrlVoltage;
 use radio_kind_params::*;
 
 use crate::mod_params::*;
 use crate::mod_traits::IrqState;
 use crate::{InterfaceVariant, RadioKind, SpiInterface};
+
+mod stm32wl;
+pub use stm32wl::Stm32wl;
+mod sx1261;
+pub use sx1261::Sx1261;
+mod sx1262;
+pub use sx1262::Sx1262;
 
 // Syncwords for public and private networks
 const LORA_MAC_PUBLIC_SYNCWORD: u16 = 0x3444; // corresponds to sx127x 0x34
@@ -35,27 +43,19 @@ const BRD_TCXO_WAKEUP_TIME: u32 = 10;
 // SetRx timeout argument for enabling continuous mode
 const RX_CONTINUOUS_TIMEOUT: u32 = 0xffffff;
 
+/// Power amplifier selection
 #[repr(u8)]
-enum DeviceSel {
+pub enum DeviceSel {
+    /// Low power, power amplifier, used by sx1261
     LowPowerPA = 1,
+    /// High power, power amplifier, used by sx1262
     HighPowerPA = 0,
 }
 
-/// Supported SX126x chip variants
-#[derive(Clone, PartialEq)]
-pub enum Sx126xVariant {
-    /// Semtech SX1261 (or STM32WL with Low Power PA only).
-    Sx1261,
-    /// Semtech SX1262 (or STM32WL with High Power PA only).
-    Sx1262,
-    /// STM32WL SoC both high power and lower PAs.
-    Stm32wl,
-}
-
 /// Configuration for SX126x-based boards
-pub struct Config {
+pub struct Config<C: Sx126xVariant + Sized> {
     /// LoRa chip variant on this board
-    pub chip: Sx126xVariant,
+    pub chip: C,
     /// Board is using TCXO (once enabled DIO3 cannot be used as IRQ)
     pub tcxo_ctrl: Option<TcxoCtrlVoltage>,
     /// Whether board is using optional DCDC in addition to LDO
@@ -67,18 +67,19 @@ pub struct Config {
 }
 
 /// Base for the RadioKind implementation for the LoRa chip kind and board type
-pub struct Sx126x<SPI, IV> {
+pub struct Sx126x<SPI, IV, C: Sx126xVariant + Sized> {
     intf: SpiInterface<SPI, IV>,
-    config: Config,
+    config: Config<C>,
 }
 
-impl<SPI, IV> Sx126x<SPI, IV>
+impl<SPI, IV, C> Sx126x<SPI, IV, C>
 where
     SPI: SpiDevice<u8>,
     IV: InterfaceVariant,
+    C: Sx126xVariant,
 {
     /// Create an instance of the RadioKind implementation for the LoRa chip kind and board type
-    pub fn new(spi: SPI, iv: IV, config: Config) -> Self {
+    pub fn new(spi: SPI, iv: IV, config: Config<C>) -> Self {
         let intf = SpiInterface::new(spi, iv);
         Self { intf, config }
     }
@@ -188,10 +189,11 @@ where
     }
 }
 
-impl<SPI, IV> RadioKind for Sx126x<SPI, IV>
+impl<SPI, IV, C> RadioKind for Sx126x<SPI, IV, C>
 where
     SPI: SpiDevice<u8>,
     IV: InterfaceVariant,
+    C: Sx126xVariant,
 {
     async fn init_lora(&mut self, is_public_network: bool) -> Result<(), RadioError> {
         // DC-DC regulator setup (default is LDO)
@@ -387,18 +389,7 @@ where
             false => RampTime::Ramp200Us, // for instance, on initialization
         };
 
-        const HIGH_POWER_PA_THRESHOLD: i32 = 15;
-        let device_select = match self.config.chip {
-            Sx126xVariant::Sx1261 => DeviceSel::LowPowerPA,
-            Sx126xVariant::Sx1262 => DeviceSel::HighPowerPA,
-            Sx126xVariant::Stm32wl => {
-                if output_power <= HIGH_POWER_PA_THRESHOLD {
-                    DeviceSel::LowPowerPA
-                } else {
-                    DeviceSel::HighPowerPA
-                }
-            }
-        };
+        let device_select = self.config.chip.get_device_sel(output_power);
 
         match device_select {
             DeviceSel::LowPowerPA => {

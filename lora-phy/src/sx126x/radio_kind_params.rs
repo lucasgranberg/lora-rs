@@ -1,5 +1,11 @@
 use crate::mod_params::*;
 
+use super::DeviceSel;
+
+pub trait Sx126xVariant {
+    fn get_device_sel(&self, output_power: i32) -> DeviceSel;
+}
+
 #[derive(Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
