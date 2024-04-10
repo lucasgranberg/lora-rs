@@ -199,7 +199,7 @@ where
                 self.wait_for_irq().await?;
                 match self.radio_kind.process_irq_event(self.radio_mode, None, true).await {
                     Ok(Some(IrqState::Done | IrqState::PreambleReceived)) => {
-                        self.radio_mode = RadioMode::Standby;
+                        //self.radio_mode = RadioMode::Standby;
                         return Ok(());
                     }
                     Ok(None) => continue,
