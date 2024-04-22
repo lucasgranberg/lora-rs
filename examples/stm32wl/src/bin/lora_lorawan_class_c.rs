@@ -81,7 +81,6 @@ async fn main(spawner: Spawner) {
         },
         tcxo_ctrl: Some(TcxoCtrlVoltage::Ctrl1V7),
         use_dcdc: true,
-        use_dio2_as_rfswitch: false,
         rx_boost: false,
     };
     let iv = Stm32wlInterfaceVariant::new(Irqs, None, Some(ctrl2)).unwrap();

@@ -60,8 +60,6 @@ pub struct Config<C: Sx126xVariant + Sized> {
     pub tcxo_ctrl: Option<TcxoCtrlVoltage>,
     /// Whether board is using optional DCDC in addition to LDO
     pub use_dcdc: bool,
-    /// Whether board is using DIO2 as RF switch (true) or as an IRQ
-    pub use_dio2_as_rfswitch: bool,
     /// Whether to boost receive
     pub rx_boost: bool,
 }
@@ -202,10 +200,10 @@ where
             self.intf.write(&reg_data, false).await?;
         }
         // DIO2 acting as RF Switch (default is DIO2 as IRQ)
-        if self.config.use_dio2_as_rfswitch {
+        if self.config.chip.use_dio2_as_rfswitch() {
             let cmd = [
                 OpCode::SetDIO2AsRfSwitchCtrl.value(),
-                self.config.use_dio2_as_rfswitch as u8,
+                self.config.chip.use_dio2_as_rfswitch() as u8,
             ];
             self.intf.write(&cmd, false).await?;
         }

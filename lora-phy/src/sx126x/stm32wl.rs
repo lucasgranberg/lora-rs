@@ -13,4 +13,7 @@ impl Sx126xVariant for Stm32wl {
             DeviceSel::LowPowerPA
         }
     }
+    fn use_dio2_as_rfswitch(&self) -> bool {
+        false
+    }
 }
