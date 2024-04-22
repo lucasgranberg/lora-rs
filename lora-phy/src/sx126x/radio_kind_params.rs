@@ -2,8 +2,10 @@ use crate::mod_params::*;
 
 use super::DeviceSel;
 
+/// Implement this trait on your custom variant or use provided impls
 pub trait Sx126xVariant {
-    fn get_device_sel(&self, output_power: i32) -> DeviceSel;
+    /// wheter to use high or low power PA
+    fn get_device_sel(&self) -> DeviceSel;
 }
 
 #[derive(Clone, Copy, PartialEq)]

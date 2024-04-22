@@ -57,7 +57,9 @@ async fn main(_spawner: Spawner) {
     let spi = SubghzSpiDevice(spi);
 
     let config = sx126x::Config {
-        chip: Stm32wl,
+        chip: Stm32wl {
+            use_high_power_pa: true,
+        },
         tcxo_ctrl: Some(TcxoCtrlVoltage::Ctrl1V7),
         use_dcdc: true,
         use_dio2_as_rfswitch: true,

@@ -389,9 +389,7 @@ where
             false => RampTime::Ramp200Us, // for instance, on initialization
         };
 
-        let device_select = self.config.chip.get_device_sel(output_power);
-
-        match device_select {
+        match self.config.chip.get_device_sel() {
             DeviceSel::LowPowerPA => {
                 const LOW_POWER_MIN: i32 = -17;
                 const LOW_POWER_MAX: i32 = 15;
