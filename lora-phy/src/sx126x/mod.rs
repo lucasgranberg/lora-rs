@@ -3,20 +3,14 @@ mod radio_kind_params;
 use defmt::debug;
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::spi::*;
-pub use radio_kind_params::Sx126xVariant;
 pub use radio_kind_params::TcxoCtrlVoltage;
 use radio_kind_params::*;
 
 use crate::mod_params::*;
 use crate::mod_traits::IrqState;
 use crate::{InterfaceVariant, RadioKind, SpiInterface};
-
-mod stm32wl;
-pub use stm32wl::Stm32wl;
-mod sx1261;
-pub use sx1261::Sx1261;
-mod sx1262;
-pub use sx1262::Sx1262;
+mod variant;
+pub use variant::*;
 
 // Syncwords for public and private networks
 const LORA_MAC_PUBLIC_SYNCWORD: u16 = 0x3444; // corresponds to sx127x 0x34
