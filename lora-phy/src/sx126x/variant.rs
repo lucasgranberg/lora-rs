@@ -2,10 +2,10 @@ use super::DeviceSel;
 
 /// Implement this trait on your custom variant or use provided impls
 pub trait Sx126xVariant {
-    /// wheter to use high or low power PA
+    /// whether to use high or low power PA
     fn get_device_sel(&self) -> DeviceSel;
 
-    /// wheter to use dio2 as rf switch output
+    /// use dio2 as rf switch output
     fn use_dio2_as_rfswitch(&self) -> bool {
         true
     }
