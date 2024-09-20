@@ -5,10 +5,10 @@ use super::parser::{
     DecryptedDataPayload, DecryptedJoinAcceptPayload, EncryptedDataPayload,
     EncryptedJoinAcceptPayload, JoinRequestPayload,
 };
-use super::securityhelpers::generic_array::{typenum::U16, GenericArray};
 use crate::parser::Error;
 use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
 use aes::Aes128;
+use generic_array::GenericArray;
 
 pub type Cmac = cmac::Cmac<Aes128>;
 
@@ -36,14 +36,14 @@ impl CryptoFactory for DefaultFactory {
 }
 
 impl Encrypter for Aes128 {
-    fn encrypt_block(&self, block: &mut GenericArray<u8, U16>) {
-        BlockEncrypt::encrypt_block(self, block);
+    fn encrypt_block(&self, block: &mut [u8]) {
+        BlockEncrypt::encrypt_block(self, GenericArray::from_mut_slice(block));
     }
 }
 
 impl Decrypter for Aes128 {
-    fn decrypt_block(&self, block: &mut GenericArray<u8, U16>) {
-        BlockDecrypt::decrypt_block(self, block);
+    fn decrypt_block(&self, block: &mut [u8]) {
+        BlockDecrypt::decrypt_block(self, GenericArray::from_mut_slice(block));
     }
 }
 
@@ -56,8 +56,8 @@ impl Mac for Cmac {
         cmac::Mac::reset(self);
     }
 
-    fn result(self) -> GenericArray<u8, U16> {
-        cmac::Mac::finalize(self).into_bytes()
+    fn result(self) -> [u8; 16] {
+        cmac::Mac::finalize(self).into_bytes().into()
     }
 }
 

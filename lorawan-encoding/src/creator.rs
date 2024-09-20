@@ -11,11 +11,6 @@ use super::securityhelpers;
 #[cfg(feature = "default-crypto")]
 use super::default_crypto::DefaultFactory;
 
-use generic_array::GenericArray;
-
-#[cfg(feature = "default-crypto")]
-use aes::cipher::generic_array::typenum::U256;
-
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Error {
@@ -174,8 +169,7 @@ impl<D: AsMut<[u8]>, F: CryptoFactory + Default> JoinAcceptCreator<D, F> {
         let aes_enc = self.factory.new_dec(key);
         for i in 0..(d.len() >> 4) {
             let start = (i << 4) + 1;
-            let tmp = GenericArray::from_mut_slice(&mut d[start..(16 + start)]);
-            aes_enc.decrypt_block(tmp);
+            aes_enc.decrypt_block(&mut d[start..(16 + start)]);
         }
         self.encrypted = true;
     }
@@ -300,7 +294,8 @@ impl<D: AsMut<[u8]>, F: CryptoFactory> JoinRequestCreator<D, F> {
 /// # Example
 ///
 /// ```
-/// let mut phy = lorawan::creator::DataPayloadCreator::new();
+/// let mut buf = [0u8; 256];
+/// let mut phy = lorawan::creator::DataPayloadCreator::new(&mut buf).unwrap();
 /// let nwk_skey = lorawan::keys::NewSKey::from([2; 16]);
 /// let app_skey = lorawan::keys::AppSKey::from([1; 16]);
 /// phy.set_confirmed(true)
@@ -309,17 +304,17 @@ impl<D: AsMut<[u8]>, F: CryptoFactory> JoinRequestCreator<D, F> {
 ///     .set_dev_addr(&[4, 3, 2, 1])
 ///     .set_fctrl(&lorawan::parser::FCtrl::new(0x80, true)) // ADR: true, all others: false
 ///     .set_fcnt(76543);
-/// phy.build(b"hello lora", &[], &nwk_skey, &app_skey).unwrap();
+/// let len = phy.build(b"hello lora", &[], &nwk_skey, &app_skey).unwrap();
+/// let payload = &buf[..len];
 /// ```
-#[derive(Default)]
-pub struct DataPayloadCreator<D, F> {
+pub struct DataPayloadCreator<F, D: AsMut<[u8]>> {
     data: D,
     data_f_port: Option<u8>,
     fcnt: u32,
     factory: F,
 }
 
-impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<D, F> {
+impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<F, D> {
     /// Creates a well initialized DataPayloadCreator with specific crypto functions.
     ///
     /// By default the packet is unconfirmed data up packet.
@@ -328,8 +323,8 @@ impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<D, F> {
         if d.len() < 255 {
             return Err(Error::BufferTooShort);
         }
-        d[0] = 0x40;
-        Ok(DataPayloadCreator { data, data_f_port: None, fcnt: 0, factory })
+        let ret = Self { data, data_f_port: None, fcnt: 0, factory };
+        Ok(ret)
     }
 
     /// Sets whether the packet is uplink or downlink.
@@ -437,7 +432,8 @@ impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<D, F> {
     /// # Example
     ///
     /// ```
-    /// let mut phy = lorawan::creator::DataPayloadCreator::new();
+    /// let mut buf = [0u8; 256];
+    /// let mut phy = lorawan::creator::DataPayloadCreator::new(&mut buf).unwrap();
     /// let mac_cmd1 = lorawan::maccommands::UplinkMacCommand::LinkCheckReq(
     ///     lorawan::maccommands::LinkCheckReqPayload());
     /// let mut mac_cmd2 = lorawan::maccommandcreator::LinkADRAnsCreator::new();
@@ -450,15 +446,15 @@ impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<D, F> {
     /// cmds.push(&mac_cmd2);
     /// let nwk_skey = lorawan::keys::NewSKey::from([2; 16]);
     /// let app_skey = lorawan::keys::AppSKey::from([1; 16]);
-    /// phy.build(&[], &cmds, &nwk_skey, &app_skey).unwrap();
+    /// let len = phy.build(&[], &cmds, &nwk_skey, &app_skey).unwrap();
     /// ```
     pub fn build(
-        &mut self,
+        mut self,
         payload: &[u8],
         cmds: &[&dyn SerializableMacCommand],
         nwk_skey: &NewSKey,
         app_skey: &AppSKey,
-    ) -> Result<&[u8], Error> {
+    ) -> Result<usize, Error> {
         let d = self.data.as_mut();
         let mut last_filled = 8; // MHDR + FHDR without the FOpts
         let has_fport = self.data_f_port.is_some();
@@ -525,12 +521,12 @@ impl<D: AsMut<[u8]>, F: CryptoFactory + Default> DataPayloadCreator<D, F> {
         );
         d[last_filled + payload_len..last_filled + payload_len + 4].copy_from_slice(&mic.0);
 
-        Ok(&d[..last_filled + payload_len + 4])
+        Ok(last_filled + payload_len + 4)
     }
 }
 
 #[cfg(feature = "default-crypto")]
-impl DataPayloadCreator<GenericArray<u8, U256>, DefaultFactory> {
+impl<D: AsMut<[u8]>> DataPayloadCreator<DefaultFactory, D> {
     /// Creates a well initialized DataPayloadCreator.
     ///
     /// By default the packet is unconfirmed data up packet.
@@ -538,7 +534,8 @@ impl DataPayloadCreator<GenericArray<u8, U256>, DefaultFactory> {
     /// # Examples
     ///
     /// ```
-    /// let mut phy = lorawan::creator::DataPayloadCreator::new();
+    /// let mut buf = [0u8; 256];
+    /// let mut phy = lorawan::creator::DataPayloadCreator::new(&mut buf).unwrap();
     /// let nwk_skey = lorawan::keys::NewSKey::from([2; 16]);
     /// let app_skey = lorawan::keys::AppSKey::from([1; 16]);
     /// let fctrl = lorawan::parser::FCtrl::new(0x80, true);
@@ -548,11 +545,10 @@ impl DataPayloadCreator<GenericArray<u8, U256>, DefaultFactory> {
     ///     set_dev_addr(&[4, 3, 2, 1]).
     ///     set_fctrl(&fctrl). // ADR: true, all others: false
     ///     set_fcnt(1);
-    /// let payload = phy.build(b"hello", &[], &nwk_skey, &app_skey).unwrap();
+    /// let len = phy.build(b"hello", &[], &nwk_skey, &app_skey).unwrap();
+    /// let payload = &buf[..len];
     /// ```
-    pub fn new() -> Self {
-        let mut data: GenericArray<u8, U256> = GenericArray::default();
-        data[0] = 0x40;
-        Self { data, data_f_port: None, fcnt: 0, factory: DefaultFactory }
+    pub fn new(data: D) -> Result<Self, Error> {
+        Self::with_options(data, DefaultFactory)
     }
 }

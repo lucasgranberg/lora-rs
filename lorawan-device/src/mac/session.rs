@@ -9,8 +9,6 @@ use lorawan::{
     parser::{DecryptedJoinAcceptPayload, DevAddr},
 };
 
-use generic_array::{typenum::U256, GenericArray};
-
 use crate::radio::RadioBuffer;
 
 use super::{
@@ -186,7 +184,7 @@ impl Session {
     ) -> FcntUp {
         tx_buffer.clear();
         let fcnt = self.fcnt_up;
-        let mut phy: DataPayloadCreator<GenericArray<u8, U256>, C> = DataPayloadCreator::default();
+        let mut phy = DataPayloadCreator::with_options(tx_buffer.as_mut(), C::default()).unwrap();
 
         let mut fctrl = FCtrl(0x0, true);
         if self.uplink.confirms_downlink() {
@@ -213,9 +211,8 @@ impl Session {
         }
 
         match phy.build(data.data, dyn_cmds.as_slice(), &self.newskey, &self.appskey) {
-            Ok(packet) => {
-                tx_buffer.clear();
-                tx_buffer.extend_from_slice(packet).unwrap();
+            Ok(len) => {
+                tx_buffer.set_pos(len);
             }
             Err(e) => panic!("Error assembling packet! {:?} ", e),
         }

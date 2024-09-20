@@ -434,7 +434,8 @@ fn test_fctrl_downlink_complete() {
 
 #[test]
 fn test_data_payload_uplink_creator() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     let fctrl = FCtrl::new(0x80, true);
@@ -444,13 +445,14 @@ fn test_data_payload_uplink_creator() {
         .set_dev_addr(&[4, 3, 2, 1])
         .set_fctrl(&fctrl) // ADR: true, all others: false
         .set_fcnt(1);
-
-    assert_eq!(phy.build(b"hello", &[], &nwk_skey, &app_skey).unwrap(), &phy_dataup_payload()[..]);
+    let len = phy.build(b"hello", &[], &nwk_skey, &app_skey).unwrap();
+    assert_eq!(&buf[..len], &phy_dataup_payload()[..]);
 }
 
 #[test]
 fn test_long_data_payload_uplink_creator() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     let fctrl = FCtrl::new(0x00, true);
@@ -460,16 +462,14 @@ fn test_long_data_payload_uplink_creator() {
         .set_dev_addr(&[4, 3, 2, 1])
         .set_fctrl(&fctrl) // all flags set to false
         .set_fcnt(0);
-
-    assert_eq!(
-        phy.build(&long_data_payload().into_bytes()[..], &[], &nwk_skey, &app_skey).unwrap(),
-        &phy_long_dataup_payload()[..]
-    );
+    let len = phy.build(&long_data_payload().into_bytes()[..], &[], &nwk_skey, &app_skey).unwrap();
+    assert_eq!(&buf[..len], &phy_long_dataup_payload()[..]);
 }
 
 #[test]
 fn test_data_payload_downlink_creator() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     let fctrl = FCtrl::new(0x80, false);
@@ -479,16 +479,14 @@ fn test_data_payload_downlink_creator() {
         .set_dev_addr(&[4, 3, 2, 1])
         .set_fctrl(&fctrl) // ADR: true, all others: false
         .set_fcnt(76543);
-
-    assert_eq!(
-        phy.build(b"hello lora", &[], &nwk_skey, &app_skey).unwrap(),
-        &phy_datadown_payload()[..]
-    );
+    let len = phy.build(b"hello lora", &[], &nwk_skey, &app_skey).unwrap();
+    assert_eq!(&buf[..len], &phy_datadown_payload()[..]);
 }
 
 #[test]
 fn test_data_payload_creator_when_payload_and_fport_0() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     phy.set_f_port(0);
@@ -497,7 +495,8 @@ fn test_data_payload_creator_when_payload_and_fport_0() {
 
 #[test]
 fn test_data_payload_creator_when_encrypt_but_not_fport_0() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     let new_channel_req =
@@ -511,7 +510,8 @@ fn test_data_payload_creator_when_encrypt_but_not_fport_0() {
 
 #[test]
 fn test_data_payload_creator_when_payload_no_fport() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [2; 16].into();
     let app_skey = [1; 16].into();
     assert!(phy.build(b"hello", &[], &nwk_skey, &app_skey).is_err());
@@ -519,7 +519,8 @@ fn test_data_payload_creator_when_payload_no_fport() {
 
 #[test]
 fn test_data_payload_creator_when_mac_commands_in_payload() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [1; 16].into();
     let app_skey = [0; 16].into();
     let mac_cmd1 = UplinkMacCommand::LinkCheckReq(LinkCheckReqPayload());
@@ -528,15 +529,14 @@ fn test_data_payload_creator_when_mac_commands_in_payload() {
     let mut cmds: Vec<&dyn SerializableMacCommand> = Vec::new();
     cmds.extend_from_slice(&[&mac_cmd1, &mac_cmd2]);
     phy.set_confirmed(false).set_uplink(true).set_f_port(0).set_dev_addr(&[4, 3, 2, 1]).set_fcnt(0);
-    assert_eq!(
-        phy.build(b"", &cmds[..], &nwk_skey, &app_skey).unwrap(),
-        &data_payload_with_fport_zero()[..]
-    );
+    let len = phy.build(b"", &cmds[..], &nwk_skey, &app_skey).unwrap();
+    assert_eq!(&buf[..len], &data_payload_with_fport_zero()[..]);
 }
 
 #[test]
 fn test_data_payload_creator_when_mac_commands_in_f_opts() {
-    let mut phy = DataPayloadCreator::new();
+    let mut buf = [0u8; 256];
+    let mut phy = DataPayloadCreator::new(&mut buf).unwrap();
     let nwk_skey = [1; 16].into();
     let app_skey = [0; 16].into();
     let mac_cmd1 = UplinkMacCommand::LinkCheckReq(LinkCheckReqPayload());
@@ -546,10 +546,8 @@ fn test_data_payload_creator_when_mac_commands_in_f_opts() {
     cmds.extend_from_slice(&[&mac_cmd1, &mac_cmd2]);
     phy.set_confirmed(false).set_uplink(true).set_dev_addr(&[4, 3, 2, 1]).set_fcnt(0);
 
-    assert_eq!(
-        phy.build(b"", &cmds[..], &nwk_skey, &app_skey).unwrap(),
-        &data_payload_with_f_opts()[..]
-    );
+    let len = phy.build(b"", &cmds[..], &nwk_skey, &app_skey).unwrap();
+    assert_eq!(&buf[..len], &data_payload_with_f_opts()[..]);
 }
 // TODO: test data payload create with piggy_backed mac commands
 

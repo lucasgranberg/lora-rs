@@ -157,9 +157,7 @@ pub fn handle_data_uplink_with_link_adr_req<const FCNT_UP: u16, const FCNT_DOWN:
             phy.set_dev_addr(&[0; 4]);
             phy.set_uplink(false);
             phy.set_fcnt(FCNT_DOWN);
-            let finished =
-                phy.build(&[3, 2, 1], &cmd, &get_key().into(), &get_key().into()).unwrap();
-            finished.len()
+            phy.build(&[3, 2, 1], &cmd, &get_key().into(), &get_key().into()).unwrap()
         } else {
             panic!("Did not decode PhyPayload::Data!");
         }
@@ -191,8 +189,7 @@ pub fn handle_class_c_uplink_after_join(
             phy.set_uplink(false);
             phy.set_fctrl(&fctrl);
             // set ack bit
-            let finished = phy.build(&[], &[], &get_key().into(), &get_key().into()).unwrap();
-            finished.len()
+            phy.build(&[], &[], &get_key().into(), &get_key().into()).unwrap()
         } else {
             panic!("Did not decode PhyPayload::Data!");
         }
@@ -246,8 +243,7 @@ pub fn handle_data_uplink_with_link_adr_ans(
             //phy.set_f_port(3);
             phy.set_fcnt(1);
             // zero out rx_buffer
-            let finished = phy.build(&[], &[], &get_key().into(), &get_key().into()).unwrap();
-            finished.len()
+            phy.build(&[], &[], &get_key().into(), &get_key().into()).unwrap()
         } else {
             panic!("Unable to parse PhyPayload::Data from uplink in handle_data_uplink_with_link_adr_ans")
         }
@@ -268,5 +264,5 @@ pub fn class_c_downlink<const FCNT_DOWN: u32>(
     phy.set_uplink(false);
     phy.set_fcnt(FCNT_DOWN);
     let finished = phy.build(&[1, 2, 3], &[], &get_key().into(), &get_key().into()).unwrap();
-    finished.len()
+    finished
 }
