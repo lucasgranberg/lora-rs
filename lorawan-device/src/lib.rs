@@ -6,6 +6,9 @@
 #![doc = document_features::document_features!(feature_label = r#"<span class="stab portability"><code>{feature}</code></span>"#)]
 #![doc = include_str!("../README.md")]
 
+// This must go FIRST so that all the other modules see its macros.
+pub(crate) mod fmt;
+
 use core::default::Default;
 use heapless::Vec;
 
@@ -37,8 +40,6 @@ pub use lorawan::{
 pub use rand_core::RngCore;
 mod rng;
 pub use rng::Prng;
-
-mod log;
 
 /// Provides the application payload and FPort of a downlink message.
 pub struct Downlink {
