@@ -16,7 +16,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 aes = { version = "0.8", optional = true }
 cmac = { version = "0.7", optional = true }
-generic-array = { version = "0", optional = true }
 hex = { version = "0", default-features = false }
 defmt = { version = "0.3", optional = true }
 serde = { version = "1", default-features = false, features = [
@@ -35,7 +34,7 @@ harness = false
 [features]
 default = ["full"]
 full = ["with-to-string", "default-crypto", "serde", "defmt"]
-default-crypto = ["aes", "cmac", "generic-array"]
+default-crypto = ["dep:aes", "dep:cmac"]
 with-to-string = []
 serde = ["dep:serde"]
 defmt = ["dep:defmt"]

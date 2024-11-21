@@ -6,9 +6,9 @@ use super::parser::{
     EncryptedJoinAcceptPayload, JoinRequestPayload,
 };
 use crate::parser::Error;
+use aes::cipher::Key;
 use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
 use aes::Aes128;
-use generic_array::GenericArray;
 
 pub type Cmac = cmac::Cmac<Aes128>;
 
@@ -22,28 +22,28 @@ impl CryptoFactory for DefaultFactory {
     type M = Cmac;
 
     fn new_enc(&self, key: &AES128) -> Self::E {
-        Aes128::new(GenericArray::from_slice(&key.0[..]))
+        Aes128::new(Key::<Aes128>::from_slice(&key.0[..]))
     }
 
     fn new_dec(&self, key: &AES128) -> Self::D {
-        Aes128::new(GenericArray::from_slice(&key.0[..]))
+        Aes128::new(Key::<Aes128>::from_slice(&key.0[..]))
     }
 
     fn new_mac(&self, key: &AES128) -> Self::M {
-        let key = GenericArray::from_slice(&key.0[..]);
+        let key = Key::<Aes128>::from_slice(&key.0[..]);
         Cmac::new(key)
     }
 }
 
 impl Encrypter for Aes128 {
     fn encrypt_block(&self, block: &mut [u8]) {
-        BlockEncrypt::encrypt_block(self, GenericArray::from_mut_slice(block));
+        BlockEncrypt::encrypt_block(self, Key::<Aes128>::from_mut_slice(block));
     }
 }
 
 impl Decrypter for Aes128 {
     fn decrypt_block(&self, block: &mut [u8]) {
-        BlockDecrypt::decrypt_block(self, GenericArray::from_mut_slice(block));
+        BlockDecrypt::decrypt_block(self, Key::<Aes128>::from_mut_slice(block));
     }
 }
 
