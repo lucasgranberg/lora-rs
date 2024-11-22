@@ -3,7 +3,7 @@ pub use lora_modulation::{Bandwidth, CodingRate, SpreadingFactor};
 /// Errors types reported during LoRa physical layer processing
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, PartialEq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 #[allow(missing_docs)]
 pub enum RadioError {
     SPI,
@@ -40,7 +40,7 @@ pub struct PacketStatus {
 
 /// The state of the radio
 #[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub enum RadioMode {
     /// Sleep mode
     Sleep,
@@ -66,7 +66,7 @@ impl From<RxMode> for RadioMode {
 
 /// Listening mode for LoRaWAN packet detection/reception
 #[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub enum RxMode {
     /// Single shot Rx Mode to listen until packet preamble is detected or RxTimeout occurs.
     /// The device will stay in RX Mode until a packet is received.
@@ -111,7 +111,7 @@ impl PacketParams {
 
 /// Receive duty cycle parameters
 #[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct DutyCycleParams {
     /// receive interval
     pub rx_time: u32,

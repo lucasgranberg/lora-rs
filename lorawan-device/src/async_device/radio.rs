@@ -1,6 +1,6 @@
 pub use crate::radio::{RfConfig, RxConfig, RxMode, RxQuality, TxConfig};
 
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct Error<E>(pub E);
 
 impl<R> From<Error<R>> for super::Error<R> {
@@ -30,10 +30,10 @@ pub trait Timer {
 /// An asynchronous radio implementation that can transmit and receive data.
 #[allow(async_fn_in_trait)]
 pub trait PhyRxTx: Sized {
-    #[cfg(feature = "defmt")]
+    #[cfg(feature = "defmt-03")]
     type PhyError: defmt::Format;
 
-    #[cfg(not(feature = "defmt"))]
+    #[cfg(not(feature = "defmt-03"))]
     type PhyError;
 
     /// Board-specific antenna gain and power loss in dBi.

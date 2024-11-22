@@ -6,9 +6,9 @@
 macro_rules! trace {
     ($s:literal $(, $x:expr)* $(,)?) => {
         {
-            #[cfg(feature = "defmt")]
+            #[cfg(feature = "defmt-03")]
             ::defmt::trace!($s $(, $x)*);
-            #[cfg(not(feature="defmt"))]
+            #[cfg(not(feature="defmt-03"))]
             let _ = ($( & $x ),*);
         }
     };
@@ -19,9 +19,9 @@ macro_rules! trace {
 macro_rules! debug {
     ($s:literal $(, $x:expr)* $(,)?) => {
         {
-            #[cfg(feature = "defmt")]
+            #[cfg(feature = "defmt-03")]
             ::defmt::debug!($s $(, $x)*);
-            #[cfg(not(feature="defmt"))]
+            #[cfg(not(feature="defmt-03"))]
             let _ = ($( & $x ),*);
         }
     };
@@ -32,9 +32,9 @@ macro_rules! debug {
 macro_rules! info {
     ($s:literal $(, $x:expr)* $(,)?) => {
         {
-            #[cfg(feature = "defmt")]
+            #[cfg(feature = "defmt-03")]
             ::defmt::info!($s $(, $x)*);
-            #[cfg(not(feature="defmt"))]
+            #[cfg(not(feature="defmt-03"))]
             let _ = ($( & $x ),*);
         }
     };
@@ -45,9 +45,9 @@ macro_rules! info {
 macro_rules! warn {
     ($s:literal $(, $x:expr)* $(,)?) => {
         {
-            #[cfg(feature = "defmt")]
+            #[cfg(feature = "defmt-03")]
             ::defmt::warn!($s $(, $x)*);
-            #[cfg(not(feature="defmt"))]
+            #[cfg(not(feature="defmt-03"))]
             let _ = ($( & $x ),*);
         }
     };

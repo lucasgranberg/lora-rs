@@ -47,7 +47,7 @@ pub struct Downlink {
     pub fport: u8,
 }
 
-#[cfg(feature = "defmt")]
+#[cfg(feature = "defmt-03")]
 impl defmt::Format for Downlink {
     fn format(&self, f: defmt::Formatter<'_>) {
         defmt::write!(f, "Downlink {{ fport: {}, data: ", self.fport,);

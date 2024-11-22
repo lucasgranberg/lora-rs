@@ -40,6 +40,7 @@ lazy_static = "1"
 # Pull in lorawan/default-crypto which is required for tests
 lorawan = { path = "../lorawan-encoding", default-features = false, features = [
     "default-crypto",
+    "defmt-03"
 ] }
 
 [features]
@@ -60,7 +61,7 @@ all-regions = [
 default-crypto = ["lorawan/default-crypto"]
 
 ## Use [`defmt`](https://docs.rs/defmt/latest/defmt/) for logging.
-defmt = ["dep:defmt", "lorawan/defmt", "lora-modulation/defmt"]
+defmt-03 = ["dep:defmt", "lorawan/defmt-03", "lora-modulation/defmt-03"]
 
 ## Provide an `async_device::Timer` impl based on `embassy-time`.
 embassy-time = ["dep:embassy-time"]
