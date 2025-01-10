@@ -1,11 +1,10 @@
-use crate::{region, AppSKey, Downlink, NwkSKey};
+use crate::{AppSKey, NwkSKey};
 use heapless::Vec;
 use lorawan::keys::CryptoFactory;
-use lorawan::maccommands::{DownlinkMacCommand, MacCommandIterator};
+use lorawan::parser::FCtrl;
 use lorawan::{
     creator::DataPayloadCreator,
     maccommands::SerializableMacCommand,
-    parser::{parse_with_factory as lorawan_parse, *},
     parser::{DecryptedJoinAcceptPayload, DevAddr},
 };
 
@@ -95,78 +94,6 @@ impl Session {
 }
 
 impl Session {
-    pub(crate) fn handle_rx<C: CryptoFactory + Default, const N: usize, const D: usize>(
-        &mut self,
-        region: &mut region::Configuration,
-        configuration: &mut super::Configuration,
-        rx: &mut RadioBuffer<N>,
-        dl: &mut Vec<Downlink, D>,
-        ignore_mac: bool,
-    ) -> Response {
-        if let Ok(PhyPayload::Data(DataPayload::Encrypted(encrypted_data))) =
-            lorawan_parse(rx.as_mut_for_read(), C::default())
-        {
-            if self.devaddr() == &encrypted_data.fhdr().dev_addr() {
-                let fcnt = encrypted_data.fhdr().fcnt() as u32;
-                let confirmed = encrypted_data.is_confirmed();
-                if encrypted_data.validate_mic(self.nwkskey().inner(), fcnt)
-                    && (fcnt > self.fcnt_down || fcnt == 0)
-                {
-                    self.fcnt_down = fcnt;
-                    // We can safely unwrap here because we already validated the MIC
-                    let decrypted = encrypted_data
-                        .decrypt(
-                            Some(self.nwkskey().inner()),
-                            Some(self.appskey().inner()),
-                            self.fcnt_down,
-                        )
-                        .unwrap();
-
-                    if !ignore_mac {
-                        // MAC commands may be in the FHDR or the FRMPayload
-                        configuration.handle_downlink_macs(
-                            region,
-                            &mut self.uplink,
-                            MacCommandIterator::<DownlinkMacCommand<'_>>::new(
-                                decrypted.fhdr().data(),
-                            ),
-                        );
-                        if let FRMPayload::MACCommands(mac_cmds) = decrypted.frm_payload() {
-                            configuration.handle_downlink_macs(
-                                region,
-                                &mut self.uplink,
-                                MacCommandIterator::<DownlinkMacCommand<'_>>::new(mac_cmds.data()),
-                            );
-                        }
-                    }
-
-                    if confirmed {
-                        self.uplink.set_downlink_confirmation();
-                    }
-
-                    return if self.fcnt_up == 0xFFFF_FFFF {
-                        // if the FCnt is used up, the session has expired
-                        Response::SessionExpired
-                    } else {
-                        // we can always increment fcnt_up when we receive a downlink
-                        self.fcnt_up += 1;
-                        if let (Some(fport), FRMPayload::Data(data)) =
-                            (decrypted.f_port(), decrypted.frm_payload())
-                        {
-                            // heapless Vec from slice fails only if slice is too large.
-                            // A data FRM payload will never exceed 256 bytes.
-                            let data = Vec::from_slice(data).unwrap();
-                            // TODO: propagate error type when heapless vec is full?
-                            let _ = dl.push(Downlink { data, fport });
-                        }
-                        Response::DownlinkReceived(fcnt)
-                    };
-                }
-            }
-        }
-        Response::NoUpdate
-    }
-
     pub(crate) fn rx2_complete(&mut self) -> Response {
         // Until we handle NbTrans, there is no case where we should not increment FCntUp.
         if self.fcnt_up == 0xFFFF_FFFF {

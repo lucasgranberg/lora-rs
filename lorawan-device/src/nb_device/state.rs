@@ -340,7 +340,7 @@ impl WaitingForRx {
                                     Err(Error::BufferTooSmall.into()),
                                 );
                             }
-                            match mac.handle_rx::<C, N, D>(buf, dl) {
+                            match mac.handle_rx::<C, N, D>(buf, dl, false) {
                                 // NoUpdate can occur when a stray radio packet is received. Maintain state
                                 mac::Response::NoUpdate => {
                                     (State::WaitingForRx(self), Ok(Response::NoUpdate))

@@ -7,7 +7,12 @@ use crate::{
     region, AppSKey, Downlink, NwkSKey,
 };
 use heapless::Vec;
-use lorawan::{self, keys::CryptoFactory};
+use lorawan::{
+    self,
+    keys::CryptoFactory,
+    maccommands::MacCommandIterator,
+    parser::{parse_with_factory, DataHeader as _, DataPayload, FRMPayload, PhyPayload},
+};
 use lorawan::{maccommands::DownlinkMacCommand, parser::DevAddr};
 
 pub type FcntDown = u32;
@@ -45,34 +50,6 @@ pub struct Configuration {
     rx1_delay: u32,
     join_accept_delay1: u32,
     join_accept_delay2: u32,
-}
-
-impl Configuration {
-    fn handle_downlink_macs(
-        &mut self,
-        region: &mut region::Configuration,
-        uplink: &mut uplink::Uplink,
-        cmds: lorawan::maccommands::MacCommandIterator<'_, DownlinkMacCommand<'_>>,
-    ) {
-        use uplink::MacAnsTrait;
-        for cmd in cmds {
-            match cmd {
-                DownlinkMacCommand::LinkADRReq(payload) => {
-                    // we ignore DR and TxPwr
-                    region.set_channel_mask(
-                        payload.redundancy().channel_mask_control(),
-                        payload.channel_mask(),
-                    );
-                    uplink.adr_ans.add();
-                }
-                DownlinkMacCommand::RXTimingSetupReq(payload) => {
-                    self.rx1_delay = del_to_delay_ms(payload.delay());
-                    uplink.ack_rx_delay();
-                }
-                _ => (),
-            }
-        }
-    }
 }
 
 pub(crate) struct Mac {
@@ -211,15 +188,9 @@ impl Mac {
         &mut self,
         buf: &mut RadioBuffer<N>,
         dl: &mut Vec<Downlink, D>,
+        ignore_mac: bool,
     ) -> Response {
-        match &mut self.state {
-            State::Joined(ref mut session) => session.handle_rx::<C, N, D>(
-                &mut self.region,
-                &mut self.configuration,
-                buf,
-                dl,
-                false,
-            ),
+        match self.state {
             State::Otaa(ref mut otaa) => {
                 if let Some(session) =
                     otaa.handle_rx::<C, N>(&mut self.region, &mut self.configuration, buf)
@@ -231,6 +202,88 @@ impl Mac {
                 }
             }
             State::Unjoined => Response::NoUpdate,
+            State::Joined(ref mut session) => {
+                if session.fcnt_up == 0xFFFF_FFFF {
+                    // if the FCnt is used up, the session has expired
+                    return Response::SessionExpired;
+                }
+                if let Ok(PhyPayload::Data(DataPayload::Encrypted(encrypted_data))) =
+                    parse_with_factory(buf.as_mut_for_read(), C::default())
+                {
+                    if session.devaddr() == &encrypted_data.fhdr().dev_addr() {
+                        let fcnt = encrypted_data.fhdr().fcnt() as u32;
+                        let confirmed = encrypted_data.is_confirmed();
+                        if encrypted_data.validate_mic(session.nwkskey().inner(), fcnt)
+                            && (fcnt > session.fcnt_down || fcnt == 0)
+                        {
+                            session.fcnt_down = fcnt;
+
+                            if confirmed {
+                                session.uplink.set_downlink_confirmation();
+                            }
+                            // We can safely unwrap here because we already validated the MIC
+                            let decrypted = encrypted_data
+                                .decrypt(
+                                    Some(session.nwkskey().inner()),
+                                    Some(session.appskey().inner()),
+                                    session.fcnt_down,
+                                )
+                                .unwrap();
+                            if !ignore_mac {
+                                // MAC commands may be in the FHDR or the FRMPayload
+                                self.handle_downlink_macs(MacCommandIterator::<
+                                    DownlinkMacCommand<'_>,
+                                >::new(
+                                    decrypted.fhdr().data()
+                                ));
+                                if let FRMPayload::MACCommands(mac_cmds) = decrypted.frm_payload() {
+                                    self.handle_downlink_macs(MacCommandIterator::<
+                                        DownlinkMacCommand<'_>,
+                                    >::new(
+                                        mac_cmds.data()
+                                    ));
+                                }
+                            }
+                            if let (Some(fport), FRMPayload::Data(data)) =
+                                (decrypted.f_port(), decrypted.frm_payload())
+                            {
+                                // heapless Vec from slice fails only if slice is too large.
+                                // A data FRM payload will never exceed 256 bytes.
+                                let data = Vec::from_slice(data).unwrap();
+                                // TODO: propagate error type when heapless vec is full?
+                                let _ = dl.push(Downlink { data, fport });
+                            }
+                            return Response::DownlinkReceived(fcnt);
+                        }
+                    }
+                }
+                Response::NoUpdate
+            }
+        }
+    }
+    fn handle_downlink_macs(
+        &mut self,
+        cmds: lorawan::maccommands::MacCommandIterator<'_, DownlinkMacCommand<'_>>,
+    ) {
+        use uplink::MacAnsTrait;
+        if let State::Joined(session) = &mut self.state {
+            for cmd in cmds {
+                match cmd {
+                    DownlinkMacCommand::LinkADRReq(payload) => {
+                        // we ignore DR and TxPwr
+                        self.region.set_channel_mask(
+                            payload.redundancy().channel_mask_control(),
+                            payload.channel_mask(),
+                        );
+                        session.uplink.adr_ans.add();
+                    }
+                    DownlinkMacCommand::RXTimingSetupReq(payload) => {
+                        self.configuration.rx1_delay = del_to_delay_ms(payload.delay());
+                        session.uplink.ack_rx_delay();
+                    }
+                    _ => (),
+                }
+            }
         }
     }
 
@@ -242,14 +295,8 @@ impl Mac {
         buf: &mut RadioBuffer<N>,
         dl: &mut Vec<Downlink, D>,
     ) -> Result<Response> {
-        match &mut self.state {
-            State::Joined(ref mut session) => Ok(session.handle_rx::<C, N, D>(
-                &mut self.region,
-                &mut self.configuration,
-                buf,
-                dl,
-                true,
-            )),
+        match self.state {
+            State::Joined(_) => Ok(self.handle_rx::<C, N, D>(buf, dl, true)),
             State::Otaa(_) => Err(Error::NotJoined),
             State::Unjoined => Err(Error::NotJoined),
         }

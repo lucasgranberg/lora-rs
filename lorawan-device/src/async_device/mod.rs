@@ -455,8 +455,11 @@ where
             match self.radio.rx_single(self.radio_buffer.as_mut()).await.map_err(Error::Radio)? {
                 RxStatus::Rx(s, _q) => {
                     self.radio_buffer.set_pos(s);
-                    match self.mac.handle_rx::<C, N, D>(&mut self.radio_buffer, &mut self.downlink)
-                    {
+                    match self.mac.handle_rx::<C, N, D>(
+                        &mut self.radio_buffer,
+                        &mut self.downlink,
+                        false,
+                    ) {
                         mac::Response::NoUpdate => None,
                         r => Some(r),
                     }

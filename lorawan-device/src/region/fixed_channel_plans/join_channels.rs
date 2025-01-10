@@ -329,7 +329,7 @@ mod test {
         let len = handle_join_request::<0>(Some(uplink), tx_config.rf, &mut rx_buf);
         buf.clear();
         buf.extend_from_slice(&rx_buf[..len]).unwrap();
-        let response = mac.handle_rx::<DefaultFactory, 255, 3>(&mut buf, &mut downlinks);
+        let response = mac.handle_rx::<DefaultFactory, 255, 3>(&mut buf, &mut downlinks, false);
         if let Response::JoinSuccess = response {
         } else {
             panic!("Did not receive join success");
@@ -390,7 +390,7 @@ mod test {
         let len = handle_join_request::<0>(Some(uplink), tx_config.rf, &mut rx_buf);
         buf.clear();
         buf.extend_from_slice(&rx_buf[..len]).unwrap();
-        let response = mac.handle_rx::<DefaultFactory, 255, 3>(&mut buf, &mut downlinks);
+        let response = mac.handle_rx::<DefaultFactory, 255, 3>(&mut buf, &mut downlinks, false);
         if let Response::JoinSuccess = response {
         } else {
             panic!("Did not receive JoinSuccess")
