@@ -238,7 +238,10 @@ where
                         self.radio_mode = RadioMode::Standby;
                         return Ok(());
                     }
-                    Ok(None) => continue,
+                    Ok(None) => {
+                        self.delay.delay_ms(10).await;
+                        continue;
+                    }
                     Err(err) => {
                         self.radio_kind.ensure_ready(self.radio_mode).await?;
                         self.radio_kind.set_standby().await?;

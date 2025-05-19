@@ -20,7 +20,7 @@ where
     // Write a buffer to the radio.
     pub async fn write(&mut self, write_buffer: &[u8], is_sleep_command: bool) -> Result<(), RadioError> {
         self.spi.write(write_buffer).await.map_err(|_| SPI)?;
-        trace!("write: {=[u8]:02x}", write_buffer);
+        //trace!("write: {=[u8]:02x}", write_buffer);
 
         if !is_sleep_command {
             self.iv.wait_on_busy().await?;
@@ -82,13 +82,13 @@ where
 
         self.iv.wait_on_busy().await?;
 
-        trace!(
-            "read: addr={=[u8]:02x}, len={}, status={:02x}, buf={=[u8]:02x}",
-            write_buffer,
-            read_buffer.len(),
-            status[0],
-            read_buffer
-        );
+        // trace!(
+        //     "read: addr={=[u8]:02x}, len={}, status={:02x}, buf={=[u8]:02x}",
+        //     write_buffer,
+        //     read_buffer.len(),
+        //     status[0],
+        //     read_buffer
+        // );
 
         Ok(status[0])
     }

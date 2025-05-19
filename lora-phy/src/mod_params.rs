@@ -83,6 +83,7 @@ pub enum RxMode {
 }
 
 /// Modulation parameters for a send and/or receive communication channel
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct ModulationParams {
     pub(crate) spreading_factor: SpreadingFactor,
     pub(crate) bandwidth: Bandwidth,
@@ -92,6 +93,7 @@ pub struct ModulationParams {
 }
 
 /// Packet parameters for a send or receive communication channel
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct PacketParams {
     pub(crate) preamble_length: u16,  // number of LoRa symbols in the preamble
     pub(crate) implicit_header: bool, // if the header is explicit, it will be transmitted in the LoRa packet, but is not transmitted if the header is implicit (known fixed length)

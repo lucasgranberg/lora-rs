@@ -869,6 +869,7 @@ where
     }
 
     async fn await_irq(&mut self) -> Result<(), RadioError> {
+        self.intf.iv.wait_on_busy().await?;
         self.intf.iv.await_irq().await
     }
 
@@ -889,11 +890,12 @@ where
                 read_status, radio_mode
             );
         }
-
-        debug!(
-            "process_irq satisfied: irq_flags = 0x{:x} in radio mode {}",
-            irq_flags, radio_mode
-        );
+        if irq_flags != 0 {
+            debug!(
+                "process_irq satisfied: irq_flags = 0x{:x} in radio mode {}",
+                irq_flags, radio_mode
+            );
+        }
 
         if IrqMask::HeaderValid.is_set(irq_flags) {
             debug!("HeaderValid in radio mode {}", radio_mode);
